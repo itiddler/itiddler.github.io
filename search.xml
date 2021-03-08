@@ -1,0 +1,307 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>我的第一篇Hexo博客</title>
+    <url>/2015/11/27/hello-world/</url>
+    <content><![CDATA[<h2 id="博客的搭建"><a href="#博客的搭建" class="headerlink" title="博客的搭建"></a>博客的搭建</h2><p>  看到了这个说明我用Hexo驱动的博客已经搭建好了，从此我要开始我的博客之路了。</p>
+<blockquote>
+<p>感谢亲爱的郭小鱼对我的支持!</p>
+</blockquote>
+]]></content>
+  </entry>
+  <entry>
+    <title>sql server 2012 union排序问题</title>
+    <url>/2017/07/06/yuque/dfs37x/</url>
+    <content><![CDATA[<p>引言：</p>
+<blockquote>
+<p>前段时间在开发过程中使用 sql server 2012 数据库，编写 union 排序 SQL 时遇到一点问题，经过网上查询及亲自实践得到解决。现在记录一下加深印象，或许也可以帮到有这方面需求的人。</p>
+</blockquote>
+<p><img src="https://cdn.nlark.com/yuque/0/2019/jpeg/87797/1552279332787-b7c3ac72-e17b-4e1f-b80b-f3767036f4a2.jpeg#align=left&display=inline&height=498&originHeight=627&originWidth=940&size=0&status=done&width=746"></p>
+<a id="more"></a>
+
+<h2 id="错误-1"><a href="#错误-1" class="headerlink" title="错误 1"></a>错误 1</h2><p>当时的需求是 select 分别排序后再使用 union，如下这种 SQL 形式：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> Name,Age <span class="keyword">FROM</span> Teacher <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name</span><br><span class="line"><span class="keyword">UNION</span></span><br><span class="line"><span class="keyword">SELECT</span> Name,Age <span class="keyword">FROM</span> Student <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name</span><br></pre></td></tr></table></figure>
+<p>但是，这种 SQL 在 sql server 中是会报语法错误的。</p>
+<h2 id="错误-2"><a href="#错误-2" class="headerlink" title="错误 2"></a>错误 2</h2><p>自然就想到了把 order by 的部分放到子查询中，SQL 语句如下：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> Name,Age <span class="keyword">FROM</span> Teacher <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) A</span><br><span class="line"><span class="keyword">UNION</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> Name,Age <span class="keyword">FROM</span> Student <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) B</span><br></pre></td></tr></table></figure>
+<p>这种 SQL 在 sql server 中是还是会报语法错误。违反了 sql server 语法规定：在子查询中, 如果不存在 TOP 语句则 ORDER BY 子句无效。</p>
+<h2 id="union-排序的解决"><a href="#union-排序的解决" class="headerlink" title="union 排序的解决"></a>union 排序的解决</h2><p>使用 TOP 语句又要查询到全部结果怎么办呢？想到了使用 TOP 100 PERCENT，100%的 TOP 自然就是全部的结果了。之后又产生了如下的 SQL：</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> TOP <span class="number">100</span> <span class="keyword">PERCENT</span> Name,Age <span class="keyword">FROM</span> Teacher <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) A</span><br><span class="line"><span class="keyword">UNION</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> TOP <span class="number">100</span> <span class="keyword">PERCENT</span> Name,Age <span class="keyword">FROM</span> Student <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) B</span><br></pre></td></tr></table></figure>
+<p>到此解决了这个 union 的排序问题。</p>
+<h2 id="错误-3"><a href="#错误-3" class="headerlink" title="错误 3"></a>错误 3</h2><p>上面说的方法只能解决 union 排序的问题，如果是 union all 会不会也能这样？</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> TOP <span class="number">100</span> <span class="keyword">PERCENT</span> Name,Age <span class="keyword">FROM</span> Teacher <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) A</span><br><span class="line"><span class="keyword">UNION</span> <span class="keyword">ALL</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> TOP <span class="number">100</span> <span class="keyword">PERCENT</span> Name,Age <span class="keyword">FROM</span> Student <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) B</span><br></pre></td></tr></table></figure>
+<p>但是，实践证明上面的 SQL 中 Order by 排序又失效了。</p>
+<h2 id="union-all-排序的解决"><a href="#union-all-排序的解决" class="headerlink" title="union all 排序的解决"></a>union all 排序的解决</h2><p>于是经过多方查找及实践，找到一个神奇的解决办法。</p>
+<figure class="highlight sql"><table><tr><td class="code"><pre><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> TOP <span class="number">99.999999</span> <span class="keyword">PERCENT</span> Name,Age <span class="keyword">FROM</span> Teacher <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) A</span><br><span class="line"><span class="keyword">UNION</span> <span class="keyword">ALL</span></span><br><span class="line"><span class="keyword">SELECT</span> <span class="operator">*</span> <span class="keyword">FROM</span> (<span class="keyword">SELECT</span> TOP <span class="number">99.999999</span> <span class="keyword">PERCENT</span> Name,Age <span class="keyword">FROM</span> Student <span class="keyword">ORDER</span> <span class="keyword">BY</span> Name) B</span><br></pre></td></tr></table></figure>
+<p>对的，在使用了 99.999999 这个数字后，该问题最终得到了解决。</p>
+]]></content>
+      <categories>
+        <category>技术</category>
+      </categories>
+      <tags>
+        <tag>sql server</tag>
+        <tag>union</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>新的开始---迅速搭建自己的免费博客</title>
+    <url>/2016/03/13/yuque/dgr0gn/</url>
+    <content><![CDATA[<h4 id="引言："><a href="#引言：" class="headerlink" title="引言："></a>引言：</h4><blockquote>
+<p>之前在 BAE 上搭建过基于 ZBlog 和 WordPress 的博客，效果也都不错成本也比较低。但是我其实不是经常写博客的，而且我觉得 ZBlog 和 WordPress 的功能也比较复杂，对我而言有些过于繁琐。一直想寻求一个简洁高效的博客系统，于是我就发现了 Hexo。<br><img src="https://cdn.nlark.com/yuque/0/2018/jpeg/87797/1539178413247-013d33ea-a4fd-4d83-b34d-dffe6d44aa08.jpeg#align=left&display=inline&height=296&originHeight=415&originWidth=1024&status=done&width=730"></p>
+</blockquote>
+<a id="more"></a>
+
+<h2 id="Hexo-简介"><a href="#Hexo-简介" class="headerlink" title="Hexo 简介"></a>Hexo 简介</h2><p><a href="https://hexo.io/">Hexo</a>是一款快速、简洁且高效的博客框架，使用 Markdown 语法，能十分方便的在 Pages 服务上发布。</p>
+<h2 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h2><p>因为 Hexo 是基于以下这些技术的，所以必须要先安装咯：</p>
+<ol>
+<li><p>Git</p>
+</li>
+<li><p>node.js</p>
+</li>
+<li><p>Hexo</p>
+</li>
+</ol>
+<p>在 Mac 上 Git 和 node.js 就到各自的官网下载安装包就行了，接下来只需要使用 npm 即可完成 Hexo 的安装。</p>
+<p>$ npm install -g hexo-cli</p>
+<h2 id="建站"><a href="#建站" class="headerlink" title="建站"></a>建站</h2><p>安装完成后执行下列命令，Hexo 将会在指定文件夹中新建所需要的文件。</p>
+<p>$ hexo init <folder><br>$ cd <folder><br>$ npm install</p>
+<h2 id="设置-Coding-Pages-项目"><a href="#设置-Coding-Pages-项目" class="headerlink" title="设置 Coding-Pages 项目"></a>设置 Coding-Pages 项目</h2><p>在 Coding 的官网注册账号即可，我其实之前是搭建在 GitCafe 上的，但是现在 GitCafe 成了 Coding 旗下的品牌，我就迁移到了 Coding。注册好之后请先设置好 SSH，这样以后发布就简单了。</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539178466139-d7d6df1b-e4ab-4b10-961f-a91aa13e0afc.png#align=left&display=inline&height=341&originHeight=560&originWidth=1227&status=done&width=747"></p>
+<p>创建一个任意名字的公开项目，在项目管理页面上的 Pages 设置好 pages 服务，有自己域名的童鞋还可以绑定自己的域名。</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539178483020-d1eb4904-8270-4a17-af09-e54435176e1c.png#align=left&display=inline&height=325&originHeight=530&originWidth=1217&status=done&width=747"></p>
+<h2 id="设置-Hexo-的-config-yml-文件信息"><a href="#设置-Hexo-的-config-yml-文件信息" class="headerlink" title="设置 Hexo 的_config.yml 文件信息"></a>设置 Hexo 的_config.yml 文件信息</h2><p>_config.yml 文件是 hexo 的重要配置文件。可以简单配置一些站点的基本信息，基本通过英文单词就知道是什么意思了，注意在冒号后面要有一个空格。</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539178503481-80a054da-7ef0-44ea-8574-f38f4b58d4f3.png#align=left&display=inline&height=394&originHeight=403&originWidth=764&status=done&width=747"></p>
+<p>一般在_config.yml 的最下面有配置发布的信息。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">deploy:</span><br><span class="line">type: git</span><br><span class="line">repository: git@git.coding.net:w0612w&#x2F;MyBlog.git</span><br><span class="line">branch: coding-pages</span><br></pre></td></tr></table></figure>
+<p>type 就写 git 就可以了，repository 就写在 Coding 上项目的 SSH 地址，branch 就写 coding-pages 就可以了。</p>
+<h2 id="Hexo-的常用命令"><a href="#Hexo-的常用命令" class="headerlink" title="Hexo 的常用命令"></a>Hexo 的常用命令</h2><p>以下所有命令都是要先到自己的 Hexo 目录下</p>
+<p>$ cd <your-hexo-site></p>
+<ul>
+<li>创建新文章</li>
+</ul>
+<p>$ hexo new [layout] <title></p>
+<p>新建一篇文章。如果没有设置 layout 的话，默认使用 _config.yml 中的 default_layout 参数代替。如果标题包含空格的话，请使用引号括起来。</p>
+<ul>
+<li>生成静态网页</li>
+</ul>
+<p>$ hexo g</p>
+<ul>
+<li>启动本地服务</li>
+</ul>
+<p>$ hexo s</p>
+<p>启动本地服务器。默认情况下，访问网址为：<a href="http://localhost:4000/">http://localhost:4000</a></p>
+<ul>
+<li>部署至 Coding</li>
+</ul>
+<p>$ hexo d</p>
+<p>在部署时出现错误可使用下面的命令尝试：</p>
+<p>$ npm install hexo-deployer-git –save</p>
+<ul>
+<li>清除缓存和静态文件</li>
+</ul>
+<p>$ hexo clean</p>
+<p>清除缓存文件 (db.json) 和已生成的静态文件 (public)。</p>
+<ul>
+<li>查看版本信息</li>
+</ul>
+<p>$ hexo version</p>
+<ul>
+<li>列出网站资料</li>
+</ul>
+<p>$ hexo list</p>
+<h2 id="Hexo-的主题"><a href="#Hexo-的主题" class="headerlink" title="Hexo 的主题"></a>Hexo 的主题</h2><p>hexo 是支持个性化主题的博客，其主题一般存放在 themes 目录下，可以在网上下载自己喜欢的主题来装饰博客。现在我的博客使用的主题是<a href="https://github.com/iissnan/hexo-theme-next">NexT</a>。该主题十分的简洁美观，功能方面也比较全面，在这里要十分感谢作者：IIssNan。如果你也想用这个主题请参考该主题的<a href="http://theme-next.iissnan.com/">使用文档</a>。</p>
+]]></content>
+      <categories>
+        <category>Blog</category>
+      </categories>
+      <tags>
+        <tag>博客</tag>
+        <tag>Hexo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>JDK8 的排序机制（单线程）</title>
+    <url>/2019/04/08/yuque/osq2k3/</url>
+    <content><![CDATA[<blockquote>
+<p>在开发过程中经常使用到 jdk 中的排序方法，但是没有查看过具体的排序算法，现在就看一下 JDK8 的排序机制。</p>
+</blockquote>
+<p><img src="https://cdn.nlark.com/yuque/0/2019/jpeg/87797/1554701949794-9c45a85c-eac0-4270-bf58-8d112891ac3c.jpeg#align=left&display=inline&height=497&originHeight=750&originWidth=1125&size=0&status=done&width=746"></p>
+<a id="more"></a>
+
+<p>主要通过查看 java.util.Arrays 的源码分析。</p>
+<h3 id="基本数据类型"><a href="#基本数据类型" class="headerlink" title="基本数据类型"></a>基本数据类型</h3><p><img src="https://cdn.nlark.com/yuque/0/2019/png/87797/1554691869462-f6971d98-7194-4dc3-9f16-e8cc51a175f1.png#align=left&display=inline&height=318&name=image.png&originHeight=318&originWidth=273&size=25948&status=done&width=273" alt="image.png"></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">sort</span><span class="params">(<span class="keyword">int</span>[] a)</span> </span>&#123;</span><br><span class="line">	DualPivotQuicksort.sort(a, <span class="number">0</span>, a.length - <span class="number">1</span>, <span class="keyword">null</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>针对基本数据类型 jdk 均使用  DualPivotQuicksort.<em>sort</em> （双轴快速排序）排序，JDK 中这样描述</p>
+<blockquote>
+<p>This algorithm offers O(n log(n)) performance on many data sets that cause other quicksorts to degrade to quadratic performance, and is typically faster than traditional (one-pivot) Quicksort implementations.</p>
+</blockquote>
+<p>这个算法在大多数情况下可以提供 O(n log(n)) 的性能，通常比传统（单轴）的快速排序更快。此时的排序是不稳定的。</p>
+<h3 id="引用数据类型"><a href="#引用数据类型" class="headerlink" title="引用数据类型"></a>引用数据类型</h3><p><img src="https://cdn.nlark.com/yuque/0/2019/png/87797/1554694564635-0bdfda94-2d12-4f73-b73c-fff2bdf8bd4a.png#align=left&display=inline&height=95&name=image.png&originHeight=95&originWidth=397&size=20364&status=done&width=397" alt="image.png"></p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">sort</span><span class="params">(Object[] a)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (LegacyMergeSort.userRequested)</span><br><span class="line">    legacyMergeSort(a);</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    ComparableTimSort.sort(a, <span class="number">0</span>, a.length, <span class="keyword">null</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> &lt;T&gt; <span class="function"><span class="keyword">void</span> <span class="title">sort</span><span class="params">(T[] a, Comparator&lt;? <span class="keyword">super</span> T&gt; c)</span> </span>&#123;</span><br><span class="line">  <span class="keyword">if</span> (c == <span class="keyword">null</span>) &#123;</span><br><span class="line">    sort(a);</span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (LegacyMergeSort.userRequested)</span><br><span class="line">      legacyMergeSort(a, c);</span><br><span class="line">    <span class="keyword">else</span></span><br><span class="line">      TimSort.sort(a, <span class="number">0</span>, a.length, c, <span class="keyword">null</span>, <span class="number">0</span>, <span class="number">0</span>);</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>从源码中可以看到如果用户选择了传统的归并排序则按照 legacyMergeSort 进行排序，否则按照  ComparableTimSort.sort 及  TimSort.sort 进行排序。TimSort  源自合并排序和插入排序，对归并排序排在已经反向排好序的输入时做了特别优化，对已经正向排好序的输入减少回溯。旨在很好地处理多种真实数据。此时的排序是稳定的。</p>
+]]></content>
+      <categories>
+        <category>技术</category>
+      </categories>
+      <tags>
+        <tag>jdk</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>使用Spring Boot整合各框架</title>
+    <url>/2018/01/15/yuque/pcdbl4/</url>
+    <content><![CDATA[<blockquote>
+<p>该篇文章用于记录学习 spring boot 的成果。</p>
+</blockquote>
+<p><img src="https://cdn.nlark.com/yuque/0/2019/jpeg/87797/1552279459231-9c7bbd04-0b1b-4b9a-9406-bc9089585847.jpeg#align=left&display=inline&height=498&originHeight=627&originWidth=940&size=0&status=done&width=746"></p>
+<a id="more"></a>
+
+<h2 id="Spring-boot-项目的-POM-文件"><a href="#Spring-boot-项目的-POM-文件" class="headerlink" title="Spring boot 项目的 POM 文件"></a>Spring boot 项目的 POM 文件</h2><p>Spring boot 是基于 Meavn 的，其 pom 文件如下：</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">project</span> <span class="attr">xmlns</span>=<span class="string">&quot;http://maven.apache.org/POM/4.0.0&quot;</span> <span class="attr">xmlns:xsi</span>=<span class="string">&quot;http://www.w3.org/2001/XMLSchema-instance&quot;</span></span></span><br><span class="line"><span class="tag">	<span class="attr">xsi:schemaLocation</span>=<span class="string">&quot;http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd&quot;</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">modelVersion</span>&gt;</span>4.0.0<span class="tag">&lt;/<span class="name">modelVersion</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.itiddler<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>study<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">version</span>&gt;</span>1.0.0-SNAPSHOT<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">packaging</span>&gt;</span>jar<span class="tag">&lt;/<span class="name">packaging</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">name</span>&gt;</span>study<span class="tag">&lt;/<span class="name">name</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;<span class="name">description</span>&gt;</span>Study project<span class="tag">&lt;/<span class="name">description</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">parent</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-parent<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">version</span>&gt;</span>1.5.9.RELEASE<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">relativePath</span> /&gt;</span> <span class="comment">&lt;!-- lookup parent from repository --&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">parent</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">properties</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">project.build.sourceEncoding</span>&gt;</span>UTF-8<span class="tag">&lt;/<span class="name">project.build.sourceEncoding</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">project.reporting.outputEncoding</span>&gt;</span>UTF-8<span class="tag">&lt;/<span class="name">project.reporting.outputEncoding</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">java.version</span>&gt;</span>1.8<span class="tag">&lt;/<span class="name">java.version</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">properties</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">dependencies</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-data-jpa<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-web<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">		   <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">		   <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>druid-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		   <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.1.5<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>mysql<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mysql-connector-java<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">scope</span>&gt;</span>runtime<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.data<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-data-mongodb<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">	        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mongodb<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">	        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mongodb-driver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">	    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.projectlombok<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>lombok<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-test<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">scope</span>&gt;</span>test<span class="tag">&lt;/<span class="name">scope</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-devtools<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.xiaoleilu<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>hutool-all<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>3.2.1<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>fastjson<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>1.2.41<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.springfox<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>springfox-swagger2<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>2.7.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.springfox<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>springfox-swagger-ui<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>2.7.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;/<span class="name">dependencies</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	<span class="tag">&lt;<span class="name">build</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">plugins</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-maven-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line"></span><br><span class="line">			<span class="tag">&lt;<span class="name">plugin</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.apache.maven.plugins<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>maven-compiler-plugin<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;<span class="name">configuration</span>&gt;</span></span><br><span class="line">					<span class="tag">&lt;<span class="name">source</span>&gt;</span>1.8<span class="tag">&lt;/<span class="name">source</span>&gt;</span></span><br><span class="line">					<span class="tag">&lt;<span class="name">target</span>&gt;</span>1.8<span class="tag">&lt;/<span class="name">target</span>&gt;</span></span><br><span class="line">					<span class="tag">&lt;<span class="name">encoding</span>&gt;</span>UTF-8<span class="tag">&lt;/<span class="name">encoding</span>&gt;</span></span><br><span class="line">				<span class="tag">&lt;/<span class="name">configuration</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;/<span class="name">plugin</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">plugins</span>&gt;</span></span><br><span class="line">	<span class="tag">&lt;/<span class="name">build</span>&gt;</span></span><br><span class="line"></span><br><span class="line"><span class="tag">&lt;/<span class="name">project</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>从 pom 的依赖管理中可以看到我在这个学习项目中整合了 spring-boot-web、spring-data-jpa、alibaba-druid、spring-data-mongodb、alibaba-fastjson、swagger2 等，下面我将逐一介绍如何在 spring boot 项目中整合这些模块。</p>
+<h2 id="application-yml-文件介绍"><a href="#application-yml-文件介绍" class="headerlink" title="application.yml 文件介绍"></a>application.yml 文件介绍</h2><p>application.yml 文件作为 spring boot 项目整体的配置文件。其语法格式与之前的 application.properties 略有不同，不过这是官方推荐的格式，采用了树形结构也比较利于阅读。spring 的官方文档中是这样描述这个文件的：</p>
+<blockquote>
+<p>Various properties can be specified inside your application.properties/application.yml file or as command line switches. This section provides a list of common Spring Boot properties and references to the underlying classes that consume them.</p>
+</blockquote>
+<p>大意就是：可以在 application.properties/ application.yml 文件中指定各种属性，或者作为命令行开关。文档中提供了 Spring Boot 常用的属性列表以及对使用它们的基础类的引用。</p>
+<p>简单的说就是各种配置的大集合文件。这个文件在 spring boot 项目中相当重要。在这个文件中可以很轻松的配置已经提供 spring-boot-starter 的模块。具体的配置项可以参考<a href="https://docs.spring.io/spring-boot/docs/1.5.9.RELEASE/reference/htmlsingle/#appendix">官方文档</a>。</p>
+<h2 id="整合-alibaba-druid"><a href="#整合-alibaba-druid" class="headerlink" title="整合 alibaba-druid"></a>整合 alibaba-druid</h2><p>整合 druid 比较简单，druid 提供了 spring-boot-starter，在 pom 文件中添加相应的依赖就能自动整合。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">		   <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">		   <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>druid-spring-boot-starter<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">		   <span class="tag">&lt;<span class="name">version</span>&gt;</span>1.1.5<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>然后在 application.yml 文件中做相应的配置如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">datasource:</span></span><br><span class="line">    <span class="attr">url:</span> <span class="string">jdbc:mysql://127.0.0.1:3306/study?useUnicode=true&amp;characterEncoding=UTF-8</span></span><br><span class="line">    <span class="attr">username:</span> <span class="string">root</span></span><br><span class="line">    <span class="attr">password:</span> <span class="number">123</span></span><br><span class="line">    <span class="attr">druid:</span></span><br><span class="line">      <span class="attr">stat-view-servlet:</span></span><br><span class="line">        <span class="attr">login-username:</span> <span class="string">druid</span> <span class="comment">#监控页面的登陆用户名</span></span><br><span class="line">        <span class="attr">login-password:</span> <span class="string">druid</span> <span class="comment">#监控页面的登陆密码</span></span><br><span class="line">      <span class="attr">filter:</span></span><br><span class="line">        <span class="attr">slf4j:</span></span><br><span class="line">          <span class="attr">enabled:</span> <span class="literal">true</span></span><br><span class="line">          <span class="attr">statement-log-enabled:</span> <span class="literal">false</span></span><br><span class="line">          <span class="attr">statement-executable-sql-log-enable:</span> <span class="literal">true</span></span><br><span class="line">          <span class="attr">statement-sql-pretty-format:</span> <span class="literal">true</span></span><br><span class="line">      <span class="attr">filters:</span> <span class="string">mergeStat,wall,config</span></span><br></pre></td></tr></table></figure>
+<p>这样就算是整合完成了。PS：使用上面的 druid 配置并在中修改下日志的等级，可以打印程序执行的可执行的 SQL。</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">logging:</span></span><br><span class="line">  <span class="attr">level:</span></span><br><span class="line">    <span class="attr">druid.sql.Statement:</span> <span class="string">DEBUG</span></span><br></pre></td></tr></table></figure>
+<h2 id="整合-spring-data-jpa"><a href="#整合-spring-data-jpa" class="headerlink" title="整合 spring-data-jpa"></a>整合 spring-data-jpa</h2><p>spring-data-jpa 是 spring 推出的一套操作关系型数据库的统一 api，使用起来非常的方便，以后我会专门用一篇文章介绍一下。下面我说下怎么在 spring boot 项目中整合 spring-data-jpa。</p>
+<p>整合 druid 也比较简单，首先在 pom 文件中添加依赖。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.boot<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-boot-starter-data-jpa<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>然后在 application.yml 文件中做相应的配置如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">jpa:</span></span><br><span class="line">    <span class="attr">hibernate:</span></span><br><span class="line">      <span class="attr">ddl-auto:</span> <span class="string">update</span></span><br><span class="line">    <span class="attr">show-sql:</span> <span class="literal">false</span></span><br></pre></td></tr></table></figure>
+<p>更多配置请参考 spring 官方文档。</p>
+<h2 id="整合-mongodb"><a href="#整合-mongodb" class="headerlink" title="整合 mongodb"></a>整合 mongodb</h2><p>首先在 pom 文件中添加依赖。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.springframework.data<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">            <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>spring-data-mongodb<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line"></span><br><span class="line">	    <span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">	        <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mongodb<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">	        <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mongodb-driver<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">	    <span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>然后在 application.yml 文件中做相应的配置如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">spring:</span></span><br><span class="line">  <span class="attr">data:</span></span><br><span class="line">    <span class="attr">mongodb:</span></span><br><span class="line">      <span class="attr">uri:</span> <span class="string">mongodb://192.168.1.5:27017/test</span> <span class="comment">#使用mongodb的test数据库</span></span><br></pre></td></tr></table></figure>
+<p>这样就算是整合成功了,下面简单讲一下使用方法。</p>
+<p>建立 mongodb 中对应的实体。如：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.itiddler.study.entity.mongdb;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.data.annotation.Id;</span><br><span class="line"><span class="keyword">import</span> org.springframework.data.mongodb.core.mapping.Document;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.annotation.JSONField;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> io.swagger.annotations.ApiModelProperty;</span><br><span class="line"><span class="keyword">import</span> lombok.Data;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Data</span></span><br><span class="line"><span class="meta">@Document</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">UserEntity</span> </span>&#123;</span><br><span class="line">	<span class="meta">@Id</span></span><br><span class="line">	<span class="meta">@ApiModelProperty(value = &quot;用户Id&quot;)</span></span><br><span class="line">	<span class="keyword">private</span> String userId;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@ApiModelProperty(value = &quot;用户名&quot;)</span></span><br><span class="line">	<span class="keyword">private</span> String userName;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@ApiModelProperty(value = &quot;密码&quot;)</span></span><br><span class="line">	<span class="meta">@JSONField(serialize = false)</span></span><br><span class="line">	<span class="keyword">private</span> String password;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>建立相应的 Repository 类，在使用的时候可以记得继承 MongoRepository 类。如：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.itiddler.study.repository.mongdb;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.data.mongodb.repository.MongoRepository;</span><br><span class="line"><span class="keyword">import</span> org.springframework.stereotype.Repository;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.itiddler.study.entity.mongdb.UserEntity;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Repository</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">UserRepositoryI</span> <span class="keyword">extends</span> <span class="title">MongoRepository</span>&lt;<span class="title">UserEntity</span>, <span class="title">String</span>&gt; </span>&#123;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>现在可以在 server 中使用 Repository 中提供的 api 了。</p>
+<h2 id="整合-alibaba-fastjson"><a href="#整合-alibaba-fastjson" class="headerlink" title="整合 alibaba-fastjson"></a>整合 alibaba-fastjson</h2><p>首先在 pom 文件中添加依赖。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>com.alibaba<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>fastjson<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>1.2.41<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>由于 alibaba-fastjson 暂时没有提供相应的 starter，需要使用代码进行整合，相关代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.itiddler.study.configs;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.List;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.context.annotation.Configuration;</span><br><span class="line"><span class="keyword">import</span> org.springframework.http.converter.HttpMessageConverter;</span><br><span class="line"><span class="keyword">import</span> org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.alibaba.fastjson.support.spring.FastJsonHttpMessageConverter;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WebMvcConfigurer</span> <span class="keyword">extends</span> <span class="title">WebMvcConfigurerAdapter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">configureMessageConverters</span><span class="params">(List&lt;HttpMessageConverter&lt;?&gt;&gt; converters)</span> </span>&#123;</span><br><span class="line">		FastJsonHttpMessageConverter converter = <span class="keyword">new</span> FastJsonHttpMessageConverter();</span><br><span class="line">		<span class="comment">// 自定义配置...</span></span><br><span class="line">		<span class="comment">// FastJsonConfig config = new FastJsonConfig();</span></span><br><span class="line">		<span class="comment">// config.set ...</span></span><br><span class="line">		<span class="comment">// converter.setFastJsonConfig(config);</span></span><br><span class="line">		converters.add(converter);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意次配置类必须继承 WebMvcConfigurerAdapter 类。</p>
+<h2 id="整合-swagger2"><a href="#整合-swagger2" class="headerlink" title="整合 swagger2"></a>整合 swagger2</h2><p>整合 swagger2 主要在项目中用于相关 api 文档的生成，使用起来能提高开发的效率。在项目中的使用方式如下：</p>
+<p>在 pom 文件中添加依赖。</p>
+<figure class="highlight xml"><table><tr><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.springfox<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>springfox-swagger2<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>2.7.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">groupId</span>&gt;</span>io.springfox<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>springfox-swagger-ui<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">			<span class="tag">&lt;<span class="name">version</span>&gt;</span>2.7.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line">		<span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+<p>在 Spring boot 的入口代码中启动 swagger2：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.itiddler.study;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.boot.SpringApplication;</span><br><span class="line"><span class="keyword">import</span> org.springframework.boot.autoconfigure.SpringBootApplication;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> springfox.documentation.swagger2.annotations.EnableSwagger2;</span><br><span class="line"></span><br><span class="line"><span class="meta">@SpringBootApplication</span></span><br><span class="line"><span class="meta">@EnableSwagger2</span>  <span class="comment">//swagger-ui.html 这里存在一个警告，官方的例子中也是这么写的，目前还没有替代方案</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">StudyApplication</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String[] args)</span> </span>&#123;</span><br><span class="line">		SpringApplication.run(StudyApplication.class, args);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>下面介绍下 swagger 的几个常用注解：<br>@ApiModelProperty(value = “??”) 注释 Controller 中方法中封装的参数，一般写在实体类中<br>@ApiParam(value = “??”) 注释 Controller 中方法中的参数<br>@ApiOperation(value = “??”) 注释 Controller 中方法</p>
+<blockquote>
+<p>如有疑问可以通过邮箱（<a href="mailto:&#x61;&#x64;&#x6d;&#x69;&#110;&#x40;&#105;&#x74;&#105;&#x64;&#100;&#108;&#101;&#x72;&#46;&#x63;&#x6f;&#x6d;">&#x61;&#x64;&#x6d;&#x69;&#110;&#x40;&#105;&#x74;&#105;&#x64;&#100;&#108;&#101;&#x72;&#46;&#x63;&#x6f;&#x6d;</a>）联系我。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>技术</category>
+      </categories>
+      <tags>
+        <tag>Spring Boot</tag>
+        <tag>框架</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>🎄圣诞快乐</title>
+    <url>/2018/12/25/yuque/perfwv/</url>
+    <content><![CDATA[<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1545751779556-82d59c88-a2ea-4acc-ab5a-37c56d36b9d7.png"></p>
+<a id="more"></a>
+]]></content>
+      <categories>
+        <category>生活</category>
+      </categories>
+      <tags>
+        <tag>圣诞</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>带大文件飞---威刚UE700-128G优盘速度测试</title>
+    <url>/2016/03/15/yuque/pycdyg/</url>
+    <content><![CDATA[<p>引言</p>
+<blockquote>
+<p>因为要制作 win to go 的随身 Windows 系统，把手头的威刚拿来测试看是否速度符合要求。</p>
+</blockquote>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539180405351-39f31dd2-f082-4b34-8b52-09c1ed5ffea0.png#align=left&display=inline&height=593&originHeight=634&originWidth=799&status=done&width=747"></p>
+<a id="more"></a>
+
+<h2 id="测试原因"><a href="#测试原因" class="headerlink" title="测试原因"></a>测试原因</h2><p>最近觉得没有必要在 MAC 上安装 OSX 和 Windows 双系统，MAC 上的硬盘空间被 BootCamp 上的 Windows 系统占去了小一半，但是 Windows 系统只是偶尔才使用。我就想能不能把 Windows 系统装在优盘或者移动硬盘上使用，通过 google 发现 Win8.1 有个新功能是 win to go，就是把 Windows 系统装在移动存储设备里，随时携带并可在任意的电脑运行。比直接在移动储存设备中安装的好处是如果不小心把接口碰掉了，一分钟之内插回去还能继续运行，超过时间就自动关机（简直很酷啊，像电影里特工潜入办公室盗取资料，拷贝完成直接拔掉优盘电脑自动关机）。于是问题来了，首先就要有个优盘或者是移动硬盘啊，找我手边的优盘就是威刚 UE700，128G 的容量也够用了，那么重点来了，关键是速度要够快。</p>
+<h2 id="优盘规格"><a href="#优盘规格" class="headerlink" title="优盘规格"></a>优盘规格</h2><ul>
+<li><p>品牌：威刚</p>
+</li>
+<li><p>型号：UE700</p>
+</li>
+<li><p>容量：128G</p>
+</li>
+<li><p>闪存：MLC</p>
+</li>
+<li><p>优盘主控：银灿 IS903</p>
+</li>
+</ul>
+<h2 id="测试准备"><a href="#测试准备" class="headerlink" title="测试准备"></a>测试准备</h2><p>Mac 电脑采用的是 GPT+UEFI 的引导方式启动系统，这种引动方式在引导时不能采用 NTFS 格式的文件系统，所以必须有一个 EFI 分区进行引导，而一般的优盘是不能划分多个分区的，所以我先利用银灿 IS903 量产工具量产了（PS：还把优盘上的灯给改成了呼吸灯），我感觉量产完了要比之前快一点。</p>
+<h2 id="测试进行中"><a href="#测试进行中" class="headerlink" title="测试进行中"></a>测试进行中</h2><ul>
+<li><p>测试环境：15 年的 MacBook Pro 13’</p>
+</li>
+<li><p>测试软件：CrystalDiskMark</p>
+</li>
+</ul>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539180412742-376de70f-e39c-4bba-b7f4-037bcfe6edf6.png#align=left&display=inline&height=374&originHeight=374&originWidth=408&status=done&width=408"></p>
+<ul>
+<li>测试软件：ATTO Disk</li>
+</ul>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539180418470-8a513ee8-bd2a-491e-bfec-9245d46706cf.png#align=left&display=inline&height=571&originHeight=571&originWidth=475&status=done&width=475"></p>
+<ul>
+<li>测试软件：FastCopy</li>
+</ul>
+<p>测试文件：3843M 的一个 CentOS 镜像文件</p>
+<p>写入速度：</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539180425956-4f261ead-7159-414b-9c42-cdf6ce6324c0.png#align=left&display=inline&height=561&originHeight=561&originWidth=359&status=done&width=359"></p>
+<p>读取速度：</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2018/png/87797/1539180439134-8062e45f-ecd7-4da3-8c7c-c86ab5f06778.png#align=left&display=inline&height=560&originHeight=560&originWidth=360&status=done&width=360"></p>
+<h2 id="测试结果"><a href="#测试结果" class="headerlink" title="测试结果"></a>测试结果</h2><p>综合来看对于对于大型文件（超过 64M）的读写速度还是非常的理想，但是遇到小型文件，速度就比较慢了。成功带大文件飞了啊，基本达到了中关村上写：100M/s，读：200M/s 的速度。综合来看还是比较适合存储一些大型的文件，对于安装 Windows 系统这种小文件非常多的情况就不太适合了。</p>
+<h4 id="后记"><a href="#后记" class="headerlink" title="后记"></a>后记</h4><blockquote>
+<p>最后我还是决定把 win to go 安装到移动硬盘中，毕竟现在读写速度对系统的影响还是比较明显。</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>搞机</category>
+      </categories>
+      <tags>
+        <tag>优盘</tag>
+        <tag>测试</tag>
+        <tag>wintogo</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>在Spring MVC中运用Callable实现多线程</title>
+    <url>/2018/01/18/yuque/ugow4n/</url>
+    <content><![CDATA[<blockquote>
+<p>在 Spring MVC 中可以使用 Callable 实现多线程，下面我介绍一下具体的使用方法。</p>
+</blockquote>
+<p><img src="https://cdn.nlark.com/yuque/0/2019/jpeg/87797/1552279556569-3b2ca372-aa0a-43d7-a08d-607934c141db.jpeg#align=left&display=inline&height=420&originHeight=529&originWidth=940&size=0&status=done&width=746"></p>
+<a id="more"></a>
+
+<h1 id="Controller-类中的用法"><a href="#Controller-类中的用法" class="headerlink" title="Controller 类中的用法"></a>Controller 类中的用法</h1><p>比如我现在在需要在 Controller 中提供获取一个用户的信息的 restFul 接口，在使用 Callable 实现多线程后的代码如下：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="meta">@GetMapping(&quot;/&#123;id&#125;&quot;)</span></span><br><span class="line">	<span class="meta">@ApiOperation(value = &quot;获取一个用户的信息&quot;)</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> Callable&lt;UserEntity&gt; <span class="title">getUserInfo</span><span class="params">(<span class="meta">@ApiParam(value = &quot;用户Id&quot;)</span> <span class="meta">@PathVariable</span> String id)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">new</span> Callable&lt;UserEntity&gt;() &#123;</span><br><span class="line">			<span class="meta">@Override</span></span><br><span class="line">			<span class="function"><span class="keyword">public</span> UserEntity <span class="title">call</span><span class="params">()</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">				<span class="keyword">return</span> userService.getOneById(id);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+<h1 id="实现多线程请求的拦截器"><a href="#实现多线程请求的拦截器" class="headerlink" title="实现多线程请求的拦截器"></a>实现多线程请求的拦截器</h1><p>在 Spring MVC 中使用 Callable 实现多线程后，传统方式的拦截器不再有作用了。需要我们自己实现并配置拦截器。其代码如下：</p>
+<p>实现 Callable 方式的拦截器：</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.itiddler.study.interceptors;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.concurrent.Callable;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.web.context.request.NativeWebRequest;</span><br><span class="line"><span class="keyword">import</span> org.springframework.web.context.request.async.CallableProcessingInterceptor;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> lombok.extern.slf4j.Slf4j;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Slf4j</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">CallableInterceptor</span> <span class="keyword">implements</span> <span class="title">CallableProcessingInterceptor</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="keyword">public</span> &lt;T&gt; <span class="function"><span class="keyword">void</span> <span class="title">beforeConcurrentHandling</span><span class="params">(NativeWebRequest request, Callable&lt;T&gt; task)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">		log.info(<span class="string">&quot;beforeConcurrentHandling&quot;</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="keyword">public</span> &lt;T&gt; <span class="function"><span class="keyword">void</span> <span class="title">preProcess</span><span class="params">(NativeWebRequest request, Callable&lt;T&gt; task)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">		log.info(<span class="string">&quot;preProcess&quot;</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="keyword">public</span> &lt;T&gt; <span class="function"><span class="keyword">void</span> <span class="title">postProcess</span><span class="params">(NativeWebRequest request, Callable&lt;T&gt; task, Object concurrentResult)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">		log.info(<span class="string">&quot;postProcess&quot;</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="keyword">public</span> &lt;T&gt; <span class="function">Object <span class="title">handleTimeout</span><span class="params">(NativeWebRequest request, Callable&lt;T&gt; task)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">		<span class="keyword">return</span> <span class="keyword">null</span>;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="keyword">public</span> &lt;T&gt; <span class="function"><span class="keyword">void</span> <span class="title">afterCompletion</span><span class="params">(NativeWebRequest request, Callable&lt;T&gt; task)</span> <span class="keyword">throws</span> Exception </span>&#123;</span><br><span class="line">		log.info(<span class="string">&quot;afterCompletion&quot;</span>);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>新建一个 Configuration 类继承 WebMvcConfigurerAdapter 并实现 configureAsyncSupport 方法，在该方法中注册刚才是实现好的 Callable 拦截器即可。</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="keyword">package</span> com.itiddler.study.configs;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.springframework.context.annotation.Configuration;</span><br><span class="line"><span class="keyword">import</span> org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;</span><br><span class="line"><span class="keyword">import</span> org.springframework.web.servlet.config.annotation.WebMvcConfigurerAdapter;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.itiddler.study.interceptors.CallableInterceptor;</span><br><span class="line"></span><br><span class="line"><span class="meta">@Configuration</span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">WebMvcConfigurer</span> <span class="keyword">extends</span> <span class="title">WebMvcConfigurerAdapter</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">	<span class="meta">@Override</span></span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">configureAsyncSupport</span><span class="params">(AsyncSupportConfigurer configurer)</span> </span>&#123;</span><br><span class="line">		<span class="keyword">super</span>.configureAsyncSupport(configurer);</span><br><span class="line">		configurer.setDefaultTimeout(<span class="number">60</span> * <span class="number">1000</span>);</span><br><span class="line">		configurer.registerCallableInterceptors(<span class="keyword">new</span> CallableInterceptor());</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>]]></content>
+      <categories>
+        <category>技术</category>
+      </categories>
+      <tags>
+        <tag>Spring MVC</tag>
+        <tag>多线程</tag>
+      </tags>
+  </entry>
+</search>
